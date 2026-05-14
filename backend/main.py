@@ -29,6 +29,25 @@ class AnalyzeRequest(BaseModel):
     lng: float
     category: str
     radius: int = 2000
+    is_pro: bool = False
+
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
+
+def fetch_google_places(category: str, lat: float, lng: float, radius: int):
+    url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+    params = {
+        "location": f"{lat},{lng}",
+        "radius": radius,
+        "keyword": category,
+        "key": GOOGLE_MAPS_API_KEY
+    }
+    try:
+        response = httpx.get(url, params=params, timeout=15.0)
+        if response.status_code == 200:
+            return response.json()
+    except Exception as e:
+        print(f"Google Places Error: {e}")
+    return {"results": []}
 
 CATEGORY_MAPPING = {
     "Coffee Shop": "node['amenity'='cafe']",
@@ -54,45 +73,61 @@ from fastapi.responses import FileResponse
 def read_root():
     return FileResponse("static/index.html")
 
+@app.get("/app")
+def read_app():
+    return FileResponse("static/app.html")
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.post("/api/analyze")
 def analyze_location(payload: AnalyzeRequest):
-    # Try exact match first for predefined categories
-    category_map = {k.lower(): v for k, v in CATEGORY_MAPPING.items()}
-    cat_lower = payload.category.lower()
-    
-    if cat_lower in category_map:
-        query_body = f"{category_map[cat_lower]}(around:{payload.radius},{payload.lat},{payload.lng});"
-    else:
-        # Dynamic regex search across names and common tags for custom inputs
-        safe_cat = payload.category.replace('"', '\\"')
-        query_body = f"""
-        node["name"~"(?i){safe_cat}"](around:{payload.radius},{payload.lat},{payload.lng});
-        way["name"~"(?i){safe_cat}"](around:{payload.radius},{payload.lat},{payload.lng});
-        node["amenity"~"(?i){safe_cat}"](around:{payload.radius},{payload.lat},{payload.lng});
-        node["shop"~"(?i){safe_cat}"](around:{payload.radius},{payload.lat},{payload.lng});
-        """
-    
-    # 1. Fetch real Competitors from OpenStreetMap
-    overpass_query_comp = f"""
-    [out:json];
-    (
-      {query_body}
-    );
-    out center;
-    """
-    comp_data = fetch_overpass(overpass_query_comp)
-    
     competitors = []
-    for element in comp_data.get('elements', []):
-        name = element.get('tags', {}).get('name', 'Unnamed Competitor')
-        # Handle nodes vs ways
-        lat = element.get('lat') or element.get('center', {}).get('lat')
-        lon = element.get('lon') or element.get('center', {}).get('lon')
+    
+    if payload.is_pro and GOOGLE_MAPS_API_KEY:
+        # Use Premium Google Places API
+        comp_data = fetch_google_places(payload.category, payload.lat, payload.lng, payload.radius)
+        for element in comp_data.get('results', []):
+            name = element.get('name', 'Unnamed Competitor')
+            loc = element.get('geometry', {}).get('location', {})
+            clat = loc.get('lat')
+            clng = loc.get('lng')
+            if clat and clng:
+                competitors.append({"name": name, "lat": clat, "lng": clng})
+    else:
+        # Try exact match first for predefined categories
+        category_map = {k.lower(): v for k, v in CATEGORY_MAPPING.items()}
+        cat_lower = payload.category.lower()
         
-        if lat and lon:
-            competitors.append({"name": name, "lat": lat, "lng": lon})
+        if cat_lower in category_map:
+            query_body = f"{category_map[cat_lower]}(around:{payload.radius},{payload.lat},{payload.lng});"
+        else:
+            # Dynamic regex search across names and common tags for custom inputs
+            safe_cat = payload.category.replace('"', '\\"')
+            query_body = f"""
+            node["name"~"(?i){safe_cat}"](around:{payload.radius},{payload.lat},{payload.lng});
+            way["name"~"(?i){safe_cat}"](around:{payload.radius},{payload.lat},{payload.lng});
+            node["amenity"~"(?i){safe_cat}"](around:{payload.radius},{payload.lat},{payload.lng});
+            node["shop"~"(?i){safe_cat}"](around:{payload.radius},{payload.lat},{payload.lng});
+            """
+        
+        # 1. Fetch real Competitors from OpenStreetMap
+        overpass_query_comp = f"""
+        [out:json];
+        (
+          {query_body}
+        );
+        out center;
+        """
+        comp_data = fetch_overpass(overpass_query_comp)
+        
+        for element in comp_data.get('elements', []):
+            name = element.get('tags', {}).get('name', 'Unnamed Competitor')
+            # Handle nodes vs ways
+            clat = element.get('lat') or element.get('center', {}).get('lat')
+            clng = element.get('lon') or element.get('center', {}).get('lon')
+            
+            if clat and clng:
+                competitors.append({"name": name, "lat": clat, "lng": clng})
             
     # Limit to top 50 competitors to prevent overwhelming the map
     competitors = competitors[:50]

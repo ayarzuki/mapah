@@ -4,12 +4,15 @@
 **Goal:** A web application that automates market research for entrepreneurs. It allows users to input a specific location and business type, and automatically evaluates the viability of opening that business by analyzing competitor density, local demographics, and point-of-interest (POI) context.
 
 ## 2. Core Features & Functional Requirements
+*   **Authentication & Access Control:**
+    *   Google Identity Services (OAuth) protecting the core `/app` dashboard.
+    *   Public marketing landing page detailing features and pricing.
 *   **Interactive Location & Category Selection:**
     *   Users can search by address, drop a pin on an interactive map, or use current GPS coordinates.
     *   Users select their intended business category (e.g., Coffee Shop, Laundromat, Minimarket, Car Wash).
-*   **Automated Competitor Analysis:**
-    *   Query OpenStreetMap (Overpass API) to locate existing competitors within a dynamic radius.
-    *   Uses dynamic regex searching to match specific brand names (e.g. "Indomaret") or generic amenity tags automatically.
+*   **Dual Data Engines (Free vs Pro):**
+    *   **Basic Plan:** Utilizes OpenStreetMap (Overpass API) for free, generic POI searching with dynamic regex brand matching.
+    *   **Pro Plan:** Integrates the premium Google Places API for highly accurate, granular competitor mapping requiring a valid `GOOGLE_MAPS_API_KEY`.
 *   **Traffic Generator & Context Mapping:**
     *   Identify nearby "anchors" or traffic generators (e.g., schools, universities, office buildings, public transit hubs, residential complexes) to estimate potential footfall.
 *   **AI-Powered Market Analysis (Kimi LLM Integration):**
