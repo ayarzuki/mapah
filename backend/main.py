@@ -1,7 +1,18 @@
+import os
+import json
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+
+client = OpenAI(
+    api_key=os.getenv("KIMI_API_KEY", ""),
+    base_url="https://api.moonshot.cn/v1",
+)
 
 app = FastAPI(title="mapah.id API")
 
@@ -86,27 +97,65 @@ def analyze_location(payload: AnalyzeRequest):
     # Limit to top 50 competitors to prevent overwhelming the map
     competitors = competitors[:50]
     
-    # 2. Simple mock logic for AI until LLM is plugged in
+    # 2. Call Kimi LLM to generate SWOT and Score
     num_competitors = len(competitors)
     
-    # Calculate a simple score: too many competitors = lower score, but some competitors = proven market
-    if num_competitors == 0:
-        score = 60 # Unproven market
-        swot = {
-            "strengths": ["First mover advantage"],
-            "weaknesses": ["Unproven market demand"],
-            "opportunities": ["Establish monopoly in this neighborhood"],
-            "threats": ["Lack of foot traffic drivers"]
-        }
-    else:
-        # Penalize heavily if more than 15 competitors
-        score = max(10, 90 - (num_competitors * 3))
-        swot = {
-            "strengths": ["Proven demand for this business type in the area"],
-            "weaknesses": [f"High saturation with {num_competitors} existing competitors within {payload.radius/1000}km"],
-            "opportunities": ["Focus on quality or niche differentiation to steal market share"],
-            "threats": ["Price wars with existing competitors"]
-        }
+    prompt = f"""
+You are an expert location intelligence analyst.
+I want to open a '{payload.category}' business at coordinates (Lat: {payload.lat}, Lng: {payload.lng}).
+I found {num_competitors} direct competitors within a {payload.radius} meter radius.
+
+Based on this data and your general knowledge about business viability, generate a strict JSON response with the following format:
+{{
+    "score": <integer 0-100 representing viability score>,
+    "swot": {{
+        "strengths": ["<strength1>", "<strength2>"],
+        "weaknesses": ["<weakness1>", "<weakness2>"],
+        "opportunities": ["<opportunity1>", "<opportunity2>"],
+        "threats": ["<threat1>", "<threat2>"]
+    }}
+}}
+
+Ensure your response is valid JSON and ONLY JSON. No markdown wrappers like ```json.
+"""
+
+    swot = {
+        "strengths": [],
+        "weaknesses": [f"{num_competitors} existing competitors within {payload.radius/1000}km"],
+        "opportunities": [],
+        "threats": []
+    }
+    score = 50
+
+    try:
+        completion = client.chat.completions.create(
+            model="moonshot-v1-8k",
+            messages=[
+                {"role": "system", "content": "You are a JSON-only API. You must strictly return a valid JSON object."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3
+        )
+        
+        raw_content = completion.choices[0].message.content.strip()
+        if raw_content.startswith("```json"):
+            raw_content = raw_content[7:-3]
+        elif raw_content.startswith("```"):
+            raw_content = raw_content[3:-3]
+            
+        llm_response = json.loads(raw_content)
+        score = llm_response.get("score", score)
+        swot = llm_response.get("swot", swot)
+        
+    except Exception as e:
+        print(f"Kimi API Error: {e}")
+        # Fallback logic if LLM fails
+        if num_competitors == 0:
+            score = 60
+            swot["strengths"] = ["First mover advantage"]
+        else:
+            score = max(10, 90 - (num_competitors * 3))
+            swot["threats"] = ["Market saturation"]
 
     return {
         "status": "success",

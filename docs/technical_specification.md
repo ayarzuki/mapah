@@ -8,12 +8,12 @@
     *   Users can search by address, drop a pin on an interactive map, or use current GPS coordinates.
     *   Users select their intended business category (e.g., Coffee Shop, Laundromat, Minimarket, Car Wash).
 *   **Automated Competitor Analysis:**
-    *   Scrape or fetch API data to locate all existing competitors within a dynamic radius (e.g., 1km, 3km, 5km).
-    *   Extract competitor metrics such as user ratings, review counts, and estimated price tiers to gauge market saturation and quality.
+    *   Query OpenStreetMap (Overpass API) to locate existing competitors within a dynamic radius.
+    *   Uses dynamic regex searching to match specific brand names (e.g. "Indomaret") or generic amenity tags automatically.
 *   **Traffic Generator & Context Mapping:**
     *   Identify nearby "anchors" or traffic generators (e.g., schools, universities, office buildings, public transit hubs, residential complexes) to estimate potential footfall.
-*   **AI-Powered Market Analysis (LLM Integration):**
-    *   Feed the aggregated geospatial and competitor data into an LLM (like DeepSeek or Kimi).
+*   **AI-Powered Market Analysis (Kimi LLM Integration):**
+    *   Feeds the aggregated geospatial and competitor data into the Kimi API (`moonshot-v1-8k`) using the `openai` Python client.
     *   Generate a structured report including:
         *   **Viability Score (0-100)**
         *   **SWOT Analysis** (Strengths, Weaknesses, Opportunities, Threats)
