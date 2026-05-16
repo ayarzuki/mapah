@@ -27,7 +27,7 @@
                 <h1 class="text-3xl font-bold text-gray-800">mapah.id</h1>
                 <p class="text-gray-500 text-sm mt-2">Evaluate business viability by location instantly.</p>
             </div>
-            <button onclick="logout()" class="text-sm bg-gray-100 hover:bg-red-50 text-red-600 px-3 py-1.5 rounded border border-gray-200 transition-colors">Log out</button>
+            <div id="auth-container"></div>
         </div>
         
         <div class="p-6 flex-1 overflow-y-auto">
@@ -84,9 +84,22 @@
 
     <script>
         // Check Authentication First
-        if (!localStorage.getItem('mapah_auth_token')) {
-            window.location.href = '/';
+        const token = localStorage.getItem('mapah_auth_token');
+        const authContainer = document.getElementById('auth-container');
+        
+        if (token) {
+            authContainer.innerHTML = '<button onclick="logout()" class="text-sm bg-gray-100 hover:bg-red-50 text-red-600 px-3 py-1.5 rounded border border-gray-200 transition-colors">Log out</button>';
+        } else {
+            authContainer.innerHTML = '<a href="/" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-colors border border-blue-700 whitespace-nowrap">Log in for Pro</a>';
         }
+
+        document.getElementById('pro-mode').addEventListener('change', function(e) {
+            if (!localStorage.getItem('mapah_auth_token')) {
+                e.preventDefault();
+                this.checked = false;
+                alert("You must be logged in to use the Pro Google Maps Engine. Please click 'Log in for Pro' first.");
+            }
+        });
 
         function logout() {
             localStorage.removeItem('mapah_auth_token');
