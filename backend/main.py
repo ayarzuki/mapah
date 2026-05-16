@@ -136,8 +136,9 @@ def fetch_google_places(category: str, lat: float, lng: float, radius: int):
 
 def fetch_overpass(query: str):
     overpass_url = "http://overpass-api.de/api/interpreter"
+    headers = {"User-Agent": "mapah.id/1.0"}
     try:
-        response = httpx.get(overpass_url, params={'data': query}, timeout=15.0)
+        response = httpx.post(overpass_url, data=query, headers=headers, timeout=30.0)
         response.raise_for_status()
         return response.json()
     except httpx.HTTPError as e:

@@ -18,6 +18,7 @@ All notable changes to the mapah.id project will be documented in this file.
 - **Logging**: Replaced all `print()` statements with Python `logging` module using structured format with timestamps and log levels
 - **LLM JSON Parsing**: Extracted into dedicated `parse_llm_response()` function with regex-based markdown block stripping. Added specific `json.JSONDecodeError` exception handling
 - **HTTP Error Handling**: Added `response.raise_for_status()` for Google Places and Overpass API calls
+- **Overpass API Fix**: Changed from `httpx.get()` with URL params to `httpx.post()` with raw query body. Added required `User-Agent: mapah.id/1.0` header (Overpass returns 406 without it). Increased timeout from 15s to 30s
 
 ### Frontend Improvements
 - **Missing Dependencies**: Added to `package.json`: `react-leaflet`, `leaflet`, `axios`, `tailwindcss`, `postcss`, `autoprefixer`
