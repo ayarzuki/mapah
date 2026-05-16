@@ -57,6 +57,8 @@ coverage.xml
 .hypothesis/
 
 # Python Virtual Environments
+backend/venv/
+backend/.venv/
 venv/
 .venv/
 env/

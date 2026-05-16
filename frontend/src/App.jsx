@@ -42,11 +42,13 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
 
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
   const handleAnalyze = async () => {
     if (!position) return alert('Please select a location on the map first.');
     setLoading(true);
     try {
-      const res = await axios.post('http://localhost:8000/api/analyze', {
+      const res = await axios.post(`${API_URL}/api/analyze`, {
         lat: position.lat,
         lng: position.lng,
         category
@@ -122,6 +124,18 @@ function App() {
                     <span className="text-red-600 font-bold text-sm uppercase">Weaknesses</span>
                     <ul className="list-disc list-inside text-sm text-gray-600 mt-1">
                       {result.swot.weaknesses.map((s, i) => <li key={i}>{s}</li>)}
+                    </ul>
+                  </div>
+                  <div>
+                    <span className="text-blue-600 font-bold text-sm uppercase">Opportunities</span>
+                    <ul className="list-disc list-inside text-sm text-gray-600 mt-1">
+                      {result.swot.opportunities.map((s, i) => <li key={i}>{s}</li>)}
+                    </ul>
+                  </div>
+                  <div>
+                    <span className="text-orange-600 font-bold text-sm uppercase">Threats</span>
+                    <ul className="list-disc list-inside text-sm text-gray-600 mt-1">
+                      {result.swot.threats.map((s, i) => <li key={i}>{s}</li>)}
                     </ul>
                   </div>
                 </div>
